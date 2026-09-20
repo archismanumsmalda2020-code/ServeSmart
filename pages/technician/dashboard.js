@@ -111,7 +111,7 @@ export default function TechnicianDashboard() {
   if (!user) return null
 
   return (
-    <div>
+    <div className="technician-page">
       <Navbar user={user} title="My Queue" />
       <div className="container">
         <h1>My Queue</h1>

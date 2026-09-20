@@ -108,7 +108,7 @@ export default function TicketDetail() {
         : '/tickets'
 
   return (
-    <div>
+    <div className="ticket-detail-page">
       <Navbar user={user} title={ticketCode(ticket.id)} />
       <div className="container">
         <p>
