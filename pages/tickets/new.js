@@ -61,7 +61,7 @@ export default function NewTicket() {
   if (!user) return null
 
   return (
-    <div>
+    <div className="new-ticket-page">
       <Navbar user={user} title="New Ticket" />
       <div className="container" style={{ maxWidth: 620 }}>
         <h1>Create a Ticket</h1>
@@ -77,7 +77,7 @@ export default function NewTicket() {
         )}
         {error && <div className="banner banner-error">{error}</div>}
 
-        <form className="panel panel-pad" onSubmit={handleSubmit}>
+        <form className="panel panel-pad new-ticket-form" onSubmit={handleSubmit}>
           <div className="field">
             <label>Title</label>
             <input

@@ -120,7 +120,7 @@ export default function AdminAssign() {
   if (!user) return null
 
   return (
-    <div>
+    <div className="admin-assignment-page">
       <Navbar user={user} title="Assignment" />
       <div className="container">
         <h1>Assign Tickets</h1>

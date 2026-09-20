@@ -26,8 +26,6 @@ export default function Navbar({ user, title }) {
         <Link href="/" className="wordmark">
           ServeSmart
         </Link>
-        <span className="topbar-divider" aria-hidden="true" />
-        <span className="topbar-title">{title}</span>
       </div>
       <nav className="topbar-links">
         {links.map((link) => (
