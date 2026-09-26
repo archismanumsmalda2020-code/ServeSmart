@@ -9,6 +9,7 @@ import {
 export default function handler(req, res) {
   if (req.method === 'GET') return handleGet(req, res)
   if (req.method === 'POST') return handlePost(req, res)
+
   res.setHeader('Allow', ['GET', 'POST'])
   return res.status(405).json({ error: 'Method not allowed' })
 }
@@ -16,7 +17,7 @@ export default function handler(req, res) {
 function handleGet(req, res) {
   const { studentId, technicianId, unassigned } = req.query
 
-  // Admin-only endpoint for unassigned tickets.
+  // Admin authorization check for unassigned tickets (from your code)
   if (unassigned === 'true') {
     const callerId = req.headers['x-user-id']
     const caller = findUser(callerId)
@@ -52,28 +53,62 @@ function handleGet(req, res) {
 }
 
 function handlePost(req, res) {
-  const { title, description, category, location, priority, studentId } =
-    req.body || {}
+  const {
+    title,
+    description,
+    category,
+    location,
+    priority,
+    studentId,
+  } = req.body || {}
 
-  if (!title || !title.trim() || !location || !location.trim()) {
-    return res.status(400).json({ error: 'Title and location are required.' })
+  // Comprehensive field validation (from friend's code)
+  if (!title || !title.trim()) {
+    return res.status(400).json({
+      error: 'Title is required.',
+    })
   }
-  if (category && !CATEGORIES.includes(category)) {
-    return res.status(400).json({ error: 'Unknown category.' })
+
+  if (!description || !description.trim()) {
+    return res.status(400).json({
+      error: 'Description is required.',
+    })
   }
-  if (priority && !PRIORITIES.includes(priority)) {
-    return res.status(400).json({ error: 'Unknown priority.' })
+
+  if (description.trim().length < 20) {
+    return res.status(400).json({
+      error: 'Description must be at least 20 characters long.',
+    })
   }
+
+  if (!category || !CATEGORIES.includes(category)) {
+    return res.status(400).json({
+      error: 'A valid category is required.',
+    })
+  }
+
+  if (!location || !location.trim()) {
+    return res.status(400).json({
+      error: 'Location is required.',
+    })
+  }
+
+  if (!priority || !PRIORITIES.includes(priority)) {
+    return res.status(400).json({
+      error: 'A valid priority is required.',
+    })
+  }
+
   const now = new Date().toISOString()
   const student = findUser(studentId)
 
   const ticket = {
     id: generateId(),
     title: title.trim(),
-    description: (description || '').trim(),
-    category: category || CATEGORIES[0],
+    description: description.trim(),
+    category,
     location: location.trim(),
-    priority: priority || 'P4',
+    priority,
     status: 'Open',
     studentId: studentId || null,
     technicianId: null,
@@ -90,5 +125,8 @@ function handlePost(req, res) {
   }
 
   tickets.push(ticket)
-  return res.status(201).json({ ticket })
+
+  return res.status(201).json({
+    ticket,
+  })
 }
