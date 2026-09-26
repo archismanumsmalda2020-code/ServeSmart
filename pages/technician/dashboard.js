@@ -29,6 +29,7 @@ export default function TechnicianDashboard() {
 
   const [search, setSearch] = useState('')
   const [priority, setPriority] = useState('all')
+  const [status, setStatus] = useState('all')
 
   useEffect(() => {
     const u = getCurrentUser()
@@ -44,7 +45,11 @@ export default function TechnicianDashboard() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/tickets?technicianId=${u.id}`)
+      const res = await fetch(`/api/tickets?technicianId=${u.id}`, {
+        headers: {
+          'x-user-id': u.id,
+        },
+      })
       if (!res.ok) throw new Error('Request failed')
       const data = await res.json()
       setTickets(data.tickets)
@@ -60,7 +65,10 @@ export default function TechnicianDashboard() {
     try {
       const res = await fetch(`/api/tickets/${ticketId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id,
+        },
         body: JSON.stringify({ status: nextStatus }),
       })
       if (!res.ok) throw new Error()
@@ -95,6 +103,8 @@ export default function TechnicianDashboard() {
   const visible = useMemo(() => {
     let list = tickets.filter((t) => !['Resolved', 'Closed'].includes(t.status))
     if (priority !== 'all') list = list.filter((t) => t.priority === priority)
+    if (status !== 'all') list = list.filter((t) => t.status === status)
+
     const q = search.trim().toLowerCase()
     if (q) {
       list = list.filter(
@@ -106,7 +116,7 @@ export default function TechnicianDashboard() {
     return [...list].sort(
       (a, b) => priorityOrder(a.priority) - priorityOrder(b.priority),
     )
-  }, [tickets, priority, search])
+  }, [tickets, priority, status, search])
 
   if (!user) return null
 
@@ -128,6 +138,16 @@ export default function TechnicianDashboard() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="all">All statuses</option>
+            <option value="Assigned">Assigned</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Closed">Closed</option>
+          </select>
           <select
             value={priority}
             onChange={(e) => setPriority(e.target.value)}
@@ -168,7 +188,8 @@ export default function TechnicianDashboard() {
                   className="ticket-row"
                   key={t.id}
                   style={{
-                    gridTemplateColumns: '84px 1.6fr 1fr 70px 110px 1fr 130px',
+                    gridTemplateColumns:
+                      '84px 1.6fr 1fr 70px 110px 1fr 130px',
                   }}
                 >
                   <div>
