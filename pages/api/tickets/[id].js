@@ -11,11 +11,18 @@ const NEXT_STATUS = {
 export default function handler(req, res) {
   const { id } = req.query
   const ticket = tickets.find((t) => t.id === id)
-  if (!ticket) return res.status(404).json({ error: 'Ticket not found.' })
 
-  if (req.method === 'GET') return res.status(200).json({ ticket })
+  if (!ticket) {
+    return res.status(404).json({ error: 'Ticket not found.' })
+  }
 
-  if (req.method === 'PATCH') return handlePatch(req, res, ticket)
+  if (req.method === 'GET') {
+    return res.status(200).json({ ticket })
+  }
+
+  if (req.method === 'PATCH') {
+    return handlePatch(req, res, ticket)
+  }
 
   res.setHeader('Allow', ['GET', 'PATCH'])
   return res.status(405).json({ error: 'Method not allowed' })
@@ -25,58 +32,137 @@ function handlePatch(req, res, ticket) {
   const { technicianId, status } = req.body || {}
   const now = new Date().toISOString()
 
-  // Validate everything first so a bad request never half-applies.
-  const tech = technicianId ? findUser(technicianId) : null
-  if (technicianId && (!tech || tech.role !== 'technician')) {
-    return res.status(400).json({ error: 'Choose a valid technician.' })
-  }
-  const assigning = Boolean(tech) && tech.id !== ticket.technicianId
-  // Assigning an Open ticket moves it to Assigned automatically.
-  const current =
-    assigning && ticket.status === 'Open' ? 'Assigned' : ticket.status
+  // ---------------------------------------------------------
+  // IDENTIFY THE CALLER
+  // ---------------------------------------------------------
+  const callerId = req.headers['x-user-id']
 
-  if (status && status !== current) {
-    if (!STATUSES.includes(status)) {
-      return res.status(400).json({ error: 'Unknown status.' })
-    }
-    if (!tech && !ticket.technicianId) {
-      return res
-        .status(400)
-        .json({ error: 'Assign a technician before changing status.' })
-    }
-    if (NEXT_STATUS[current] !== status) {
-      return res
-        .status(400)
-        .json({ error: `A ticket cannot move from ${current} to ${status}.` })
-    }
+  if (!callerId) {
+    return res.status(401).json({
+      error: 'User identity is required.',
+    })
   }
 
-  let changed = false
+  const caller = findUser(callerId)
 
-  if (assigning) {
-    const wasAssigned = Boolean(ticket.technicianId)
+  if (!caller) {
+    return res.status(401).json({
+      error: 'Unknown user.',
+    })
+  }
+
+  // ---------------------------------------------------------
+  // ASSIGNMENT / REASSIGNMENT
+  // ---------------------------------------------------------
+  const isAssignmentRequest = technicianId !== undefined
+
+  if (isAssignmentRequest) {
+    // Only admins may assign or reassign tickets.
+    if (caller.role !== 'admin') {
+      return res.status(403).json({
+        error: 'Only admins can assign or reassign tickets.',
+      })
+    }
+
+    const tech = findUser(technicianId)
+
+    if (!tech || tech.role !== 'technician') {
+      return res.status(400).json({
+        error: 'Choose a valid technician.',
+      })
+    }
+
+    const isNewAssignment = !ticket.technicianId
+    const isReassignment =
+      ticket.technicianId && ticket.technicianId !== technicianId
+
+    // Same technician = nothing to change.
+    if (ticket.technicianId === technicianId) {
+      return res.status(200).json({ ticket })
+    }
+
     ticket.technicianId = tech.id
-    if (ticket.status === 'Open') ticket.status = 'Assigned'
+
+    // Assigning an Open ticket automatically changes it to Assigned.
+    if (ticket.status === 'Open') {
+      ticket.status = 'Assigned'
+
+      ticket.activity.push({
+        id: `a${ticket.activity.length + 1}`,
+        type: 'status',
+        message: 'Status changed to Assigned',
+        at: now,
+      })
+    }
+
     ticket.activity.push({
       id: `a${ticket.activity.length + 1}`,
       type: 'assigned',
-      message: `${wasAssigned ? 'Reassigned' : 'Assigned'} to ${tech.name}`,
+      message: `${
+        isReassignment ? 'Reassigned' : isNewAssignment ? 'Assigned' : 'Assigned'
+      } to ${tech.name}`,
       at: now,
     })
-    changed = true
+
+    ticket.updatedAt = now
+
+    return res.status(200).json({ ticket })
   }
 
-  if (status && status !== ticket.status) {
-    ticket.status = status
-    ticket.activity.push({
-      id: `a${ticket.activity.length + 1}`,
-      type: 'status',
-      message: `Status changed to ${status}`,
-      at: now,
+  // ---------------------------------------------------------
+  // STATUS UPDATE
+  // ---------------------------------------------------------
+
+  // Only technicians can change ticket status.
+  if (caller.role !== 'technician') {
+    return res.status(403).json({
+      error: 'Only technicians can update ticket status.',
     })
-    changed = true
   }
 
-  if (changed) ticket.updatedAt = now
+  // Technician can only update tickets assigned to them.
+  if (ticket.technicianId !== caller.id) {
+    return res.status(403).json({
+      error: 'You can only update tickets assigned to you.',
+    })
+  }
+
+  // No status supplied.
+  if (!status) {
+    return res.status(400).json({
+      error: 'No supported update provided.',
+    })
+  }
+
+  // Validate status.
+  if (!STATUSES.includes(status)) {
+    return res.status(400).json({
+      error: 'Unknown status.',
+    })
+  }
+
+  // Same status is not a transition.
+  if (status === ticket.status) {
+    return res.status(200).json({ ticket })
+  }
+
+  // Enforce sequential status transitions.
+  if (NEXT_STATUS[ticket.status] !== status) {
+    return res.status(400).json({
+      error: `A ticket cannot move from ${ticket.status} to ${status}.`,
+    })
+  }
+
+  ticket.status = status
+
+  ticket.activity.push({
+    id: `a${ticket.activity.length + 1}`,
+    type: 'status',
+    message: `Status changed to ${status}`,
+    at: now,
+  })
+
+  ticket.updatedAt = now
+
   return res.status(200).json({ ticket })
 }

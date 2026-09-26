@@ -40,14 +40,18 @@ export default function AdminAssign() {
       return
     }
     setUser(u)
-    load()
+    load(u)
   }, [])
 
-  async function load() {
+  async function load(currentUser) {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/tickets')
+      const res = await fetch('/api/tickets?unassigned=true', {
+        headers: {
+          'x-user-id': currentUser.id,
+        },
+      })
       if (!res.ok) throw new Error()
       const data = await res.json()
       setAllTickets(data.tickets)
@@ -66,7 +70,10 @@ export default function AdminAssign() {
     try {
       const res = await fetch(`/api/tickets/${ticketId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id,
+        },
         body: JSON.stringify({ technicianId }),
       })
       if (!res.ok) throw new Error()

@@ -15,12 +15,38 @@ export default function handler(req, res) {
 
 function handleGet(req, res) {
   const { studentId, technicianId, unassigned } = req.query
+
+  // Admin-only endpoint for unassigned tickets.
+  if (unassigned === 'true') {
+    const callerId = req.headers['x-user-id']
+    const caller = findUser(callerId)
+
+    if (!caller) {
+      return res.status(401).json({
+        error: 'Unknown user.',
+      })
+    }
+
+    if (caller.role !== 'admin') {
+      return res.status(403).json({
+        error: 'Only admins can view unassigned tickets.',
+      })
+    }
+  }
+
   let result = tickets
 
-  if (studentId) result = result.filter((t) => t.studentId === studentId)
-  if (technicianId)
+  if (studentId) {
+    result = result.filter((t) => t.studentId === studentId)
+  }
+
+  if (technicianId) {
     result = result.filter((t) => t.technicianId === technicianId)
-  if (unassigned === 'true') result = result.filter((t) => !t.technicianId)
+  }
+
+  if (unassigned === 'true') {
+    result = result.filter((t) => !t.technicianId)
+  }
 
   return res.status(200).json({ tickets: result })
 }

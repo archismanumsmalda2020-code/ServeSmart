@@ -13,7 +13,7 @@ const ROLE_LINKS = {
 
 export default function Navbar({ user, title }) {
   const router = useRouter()
-  const links = ROLE_LINKS[user.role] || []
+  const links = user ? ROLE_LINKS[user.role] || [] : []
 
   function handleLogout() {
     logout()
@@ -39,8 +39,8 @@ export default function Navbar({ user, title }) {
         ))}
       </nav>
       <div className="topbar-user">
-        <span className="role-chip">{user.role}</span>
-        <span className="topbar-name">{user.name}</span>
+        <span className="role-chip">{user?.role}</span>
+        <span className="topbar-name">{user?.name}</span>
         <button className="btn btn-ghost" onClick={handleLogout}>
           Log out
         </button>
