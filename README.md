@@ -235,3 +235,11 @@ These tasks are optional and separate from the required tasks above.
 - The data lives in memory, so it resets every time the server restarts. There is no database.
 - Keep the existing project structure and code style. You should not need extra libraries.
 - Enforce every rule on the server as well. Hiding a button in the UI is not enough.
+
+## Links
+
+- How to clone and fork this GitHub Repository:
+- https://drive.google.com/file/d/12V_ONDBT5kH3ELC0_wWJcPfjsLmpR3KR/view?usp=sharing
+
+- Directly download zip file:
+- https://drive.google.com/file/d/1V9EqaQ_3s2oOB_eCeA2Ok4D0-2IAbJpL/view?usp=sharing
